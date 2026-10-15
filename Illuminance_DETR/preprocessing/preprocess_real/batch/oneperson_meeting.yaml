@@ -1,0 +1,28 @@
+# oneperson_meeting_01 oneperson_meeting_02 oneperson_meeting_03 oneperson_meeting_04 oneperson_meeting_05 oneperson_meeting_06 oneperson_meeting_07
+# twoperson_meeting_03 twoperson_meeting_04 twoperson_meeting_07 twoperson_meeting_08 twoperson_meeting_09 twoperson_meeting_10 twoperson_meeting_11
+# threeperson_meeting_02 threeperson_meeting_03  threeperson_meeting_04 threeperson_meeting_05 threeperson_meeting_08 threeperson_meeting_09 threeperson_meeting_10
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 1
+  detect: False
+  cycle_phases: 6     # walk,walk,stop,crouch,banzai,bow（meeting は お辞儀 あり）
+  drop_phases: [5]    # お辞儀のフレームを破棄（誰か1人でも該当すればフレームごと落とす）
+jobs:
+  - data: oneperson_meeting_01
+    start_img: /path/to/nas/data/raw/light/oneperson_meeting_01/color/20260123_110824_433950.jpg
+  - data: oneperson_meeting_02
+    start_img: /path/to/nas/data/raw/light/oneperson_meeting_02/color/20260123_111354_335109.jpg
+  - data: oneperson_meeting_03
+    start_img: /path/to/nas/data/raw/light/oneperson_meeting_03/color/20260123_121549_336471.jpg
+  - data: oneperson_meeting_04
+    start_img: /path/to/nas/data/raw/light/oneperson_meeting_04/color/20260123_123054_021934.jpg
+  - data: oneperson_meeting_05
+    start_img: /path/to/nas/data/raw/light/oneperson_meeting_05/color/20260123_132304_214045.jpg
+  - data: oneperson_meeting_06
+    start_img: /path/to/nas/data/raw/light/oneperson_meeting_06/color/20260123_135929_144331.jpg
+  - data: oneperson_meeting_07
+    start_img: /path/to/nas/data/raw/light/oneperson_meeting_07/color/20260123_140454_328742.jpg
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/oneperson_meeting.yaml --gpu 0 > ./log/log_oneperson_meeting.out 2>&1 &

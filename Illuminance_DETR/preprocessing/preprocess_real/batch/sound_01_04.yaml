@@ -1,0 +1,18 @@
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 1
+  cycle_phases: 1   # 歩きのみ（全フレーム walk = ラベル0）
+jobs:
+  # start_img = RGB 撮影開始から 30 秒後のフレーム
+  - data: sound_01
+    start_img: /path/to/nas/data/raw/light/sound_01/color/20260930_180813_143989.jpg
+  - data: sound_02
+    start_img: /path/to/nas/data/raw/light/sound_02/color/20260930_181320_910546.jpg
+  - data: sound_03
+    start_img: /path/to/nas/data/raw/light/sound_03/color/20260930_182058_765202.jpg
+  - data: sound_04
+    start_img: /path/to/nas/data/raw/light/sound_04/color/20260930_183034_166496.jpg
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/sound.yaml --gpu 1 > ./log/log_sound.out 2>&1 &

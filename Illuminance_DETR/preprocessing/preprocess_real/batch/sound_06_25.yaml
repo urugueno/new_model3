@@ -1,0 +1,51 @@
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 1
+  detect: False
+  cycle_phases: 1   # 歩きのみ（全フレーム walk = ラベル0）
+jobs:
+  # start_img = RGB 撮影開始（先頭フレーム）から 30 秒後のフレーム
+  - data: sound_06
+    start_img: /path/to/nas/data/raw/light/sound_06/color/20261007_171014_223756.jpg
+  - data: sound_07
+    start_img: /path/to/nas/data/raw/light/sound_07/color/20261007_172047_585755.jpg
+  - data: sound_08
+    start_img: /path/to/nas/data/raw/light/sound_08/color/20261007_172600_612891.jpg
+  - data: sound_09
+    start_img: /path/to/nas/data/raw/light/sound_09/color/20261007_173309_585357.jpg
+  - data: sound_10
+    start_img: /path/to/nas/data/raw/light/sound_10/color/20261007_174134_820825.jpg
+  - data: sound_11
+    start_img: /path/to/nas/data/raw/light/sound_11/color/20261007_174923_239413.jpg
+  - data: sound_12
+    start_img: /path/to/nas/data/raw/light/sound_12/color/20261007_175708_887051.jpg
+  - data: sound_13
+    start_img: /path/to/nas/data/raw/light/sound_13/color/20261007_180350_763865.jpg
+  - data: sound_14
+    start_img: /path/to/nas/data/raw/light/sound_14/color/20261007_180920_512842.jpg
+  - data: sound_15
+    start_img: /path/to/nas/data/raw/light/sound_15/color/20261007_181539_635238.jpg
+  - data: sound_16
+    start_img: /path/to/nas/data/raw/light/sound_16/color/20261007_183150_490309.jpg
+  - data: sound_17
+    start_img: /path/to/nas/data/raw/light/sound_17/color/20261007_183724_133226.jpg
+  - data: sound_18
+    start_img: /path/to/nas/data/raw/light/sound_18/color/20261007_184348_417191.jpg
+  - data: sound_19
+    start_img: /path/to/nas/data/raw/light/sound_19/color/20261007_185107_958499.jpg
+  - data: sound_20
+    start_img: /path/to/nas/data/raw/light/sound_20/color/20261007_185755_122468.jpg
+  - data: sound_21
+    start_img: /path/to/nas/data/raw/light/sound_21/color/20261007_190433_939165.jpg
+  - data: sound_22
+    start_img: /path/to/nas/data/raw/light/sound_22/color/20261007_191027_425360.jpg
+  - data: sound_23
+    start_img: /path/to/nas/data/raw/light/sound_23/color/20261007_191627_468258.jpg
+  - data: sound_24
+    start_img: /path/to/nas/data/raw/light/sound_24/color/20261007_192326_209464.jpg
+  - data: sound_25
+    start_img: /path/to/nas/data/raw/light/sound_25/color/20261007_192846_039130.jpg
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/sound_06_25.yaml --gpu 1 > ./log/log_sound_06_25.out 2>&1 &

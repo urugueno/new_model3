@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.log
+nohup.out
+.ipynb_checkpoints/
+.venv/
+venv/
+*.egg-info/

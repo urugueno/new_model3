@@ -1,0 +1,78 @@
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 3
+  detect: False
+jobs:
+  # 複数人（people >= 2）では persons で人物ごとに track_id 一覧と開始フェーズを指定する。
+  # ids には、その人物に対応する（不安定な）track_id をすべて列挙する。
+  # start_phase は t=0 でその人物が居るフェーズ（0〜4）。
+  #   phase 0,1 -> walk / 2 -> stop / 3 -> crouch / 4 -> hand
+  # ids の値は各データの bbox_label.csv の person_id 列を確認して埋めること。
+  # track_id が途中で別人に乗り移った場合は、その id を区間で分ける:
+  #   ids: [1, {id: 9, to: 20260129_083945_703176.jpg},]   # 9 はこの時刻まで
+  #   ids: [2, {id: 9, from: 20260129_083945_703176.jpg},] # 以降は別の人物
+  #   from は含み to は含まない。同じ時刻を to と from に書けば穴も重なりも出ない。
+  #   同じ id に from だけ / to だけを並べると、書いた順に区間を開いて閉じると読む:
+  #     ids: [{id: 29, from: A}, {id: 29, to: B}]   -> A から B まで の 1 区間
+  #     ids: [{id: 29, to: A}, {id: 29, from: B}]   -> A まで と B から の 2 区間
+  # 収録中にサイクルを飛ばして以降の位相がずれた場合は shifts で補正する（delta 省略で 1）:
+  #   persons の中に書けばその人物だけ、job 直下に書けば全行（1人データはこちら）に効く。
+  #     shifts: [{from: 20260129_084644_593751.jpg, delta: 1}]
+  - data: threeperson_gym_01
+    start_img: /path/to/nas/data/raw/light/threeperson_gym_01/color/20260129_083929_394798.jpg
+    persons:
+      - ids: [3,]
+        start_phase: 1 #kojima
+      - ids: [1,]
+        start_phase: 2 #endo
+      - ids: [2,18,]
+        start_phase: 3 #shibuya
+  - data: threeperson_gym_02
+    start_img: /path/to/nas/data/raw/light/threeperson_gym_02/color/20260129_084549_565954.jpg
+    persons:
+      - ids: [2,8,]
+        start_phase: 1 #kojima
+      - ids: [3,27,43,50,]
+        start_phase: 2 #hariguchi
+      - ids: [1,18,24,37,]
+        start_phase: 3 #shibuya
+  - data: threeperson_gym_03
+    start_img: /path/to/nas/data/raw/light/threeperson_gym_03/color/20260129_085304_370691.jpg
+    persons:
+      - ids: [3,23,26,51,57,68,]
+        start_phase: 1 #tsunoda
+      - ids: [1,15,]
+        start_phase: 2 #hariguchi
+      - ids: [2,44,66,]
+        start_phase: 3 #endo
+  - data: threeperson_gym_04
+    start_img: /path/to/nas/data/raw/light/threeperson_gym_04/color/20260129_085944_830460.jpg
+    persons:
+      - ids: [2,20,23,]
+        start_phase: 1 #kojima
+      - ids: [3,17,28,]
+        start_phase: 2 #tsunoda
+      - ids: [1,4,6,26,]
+        start_phase: 3 #hariguchi
+  - data: threeperson_gym_05
+    start_img: /path/to/nas/data/raw/light/threeperson_gym_05/color/20260129_090539_492518.jpg
+    persons:
+      - ids: [1,20,22,{id: 38, from: 20260129_090853_350307.jpg},]
+        start_phase: 1 #tsunoda
+      - ids: [3,7,44,]
+        start_phase: 2 #hariguchi
+      - ids: [2,9,19,23,31,{id: 38, from: 20260129_090853_249821.jpg},{id: 38, to: 20260129_090853_350307.jpg}]
+        start_phase: 3 #shibuya
+  - data: threeperson_gym_06
+    start_img: /path/to/nas/data/raw/light/threeperson_gym_06/color/20260129_091224_319862.jpg
+    persons:
+      - ids: [2,39,]
+        start_phase: 1 #kojima
+      - ids: [1,13,26,]
+        start_phase: 2 #endo
+      - ids: [3,8,22,24,31,36,]
+        start_phase: 3 #shibuya
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/threeperson_gym.yaml --gpu 0 > ./log/log_threeperson_gym.out 2>&1 &

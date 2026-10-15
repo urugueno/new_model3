@@ -1,0 +1,54 @@
+# chair_01 chair_02 imbalance_01 imbalance_02 reduce_01 reduce_02 rotate shift_01 shift_02 shift_03 shift_04 normal
+# TODO: start_img のファイル名・people・persons・cycle_phases を各データに合わせて埋めること
+# マットをずらした収録は sensor_shift（[dx, dy] m、カメラから見て +x=右・+y=奥）/
+# sensor_rot（上から見て反時計回りが正、pivot は動かなかったセンサのグリッド番号）で変位を与える
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 1           # TODO: 人数
+  detect: False
+  sensor_frame: special   # センサ座標の正規化枠（ずらした配置も [0, 1] に収まる枠。従来データは legacy）
+  # cycle_phases: 6   # meeting 形式（お辞儀あり）なら有効化
+  # drop_phases: [5]
+jobs:
+  # 複数人（people >= 2）なら persons で人物ごとに track_id と開始フェーズを指定する:
+  #   persons:
+  #     - ids: [1,]
+  #       start_phase: 2
+  #     - ids: [2,]
+  #       start_phase: 3
+  # コメントの範囲は timestamp.csv の先頭〜末尾の時刻（color/ にはこの範囲外の画像もあるデータがある）
+  - data: chair_01      # 22:18:07-22:24:13（color/ には 22:11 からの別収録も含まれる）
+    start_img: /path/to/nas/data/raw/light/chair_01/color/20261009_221858_437111.jpg
+  - data: chair_02      # 22:25:54-22:32:01
+    start_img: /path/to/nas/data/raw/light/chair_02/color/20261009_222633_491010.jpg
+  - data: imbalance_01  # 18:43:45-18:54:49
+    start_img: /path/to/nas/data/raw/light/imbalance_01/color/20261009_184430_434679.jpg
+  - data: imbalance_02  # 18:59:52-19:10:55
+    start_img: /path/to/nas/data/raw/light/imbalance_02/color/20261009_190050_260245.jpg
+  - data: reduce_01     # 21:32:38-21:38:39
+    start_img: /path/to/nas/data/raw/light/reduce_01/color/20261009_213318_322776.jpg
+    area_size: 1.4      # マットはそのまま、歩く範囲だけ 1.4 m に狭めた
+  - data: reduce_02     # 21:38:57-21:44:59
+    start_img: /path/to/nas/data/raw/light/reduce_02/color/20261009_213938_594318.jpg
+    area_size: 1.1      # マットはそのまま、歩く範囲だけ 1.1 m に狭めた
+  - data: rotate        # 21:20:03-21:24:03
+    start_img: /path/to/nas/data/raw/light/rotate/color/20261009_212043_323501.jpg
+    sensor_rot: {deg: 15, pivot: [5, 5]}   # 右奥のセンサを支点に反時計回り 15°
+  - data: shift_01      # 19:44:19-19:48:20
+    start_img: /path/to/nas/data/raw/light/shift_01/color/20261009_194503_427781.jpg
+    sensor_shift: [0.2, 0.0]    # 右に 20 cm
+  - data: shift_02      # 19:56:11-20:00:12
+    start_img: /path/to/nas/data/raw/light/shift_02/color/20261009_195653_460723.jpg
+    sensor_shift: [0.4, 0.0]    # 右に 40 cm
+  - data: shift_03      # 20:06:27-20:10:28
+    start_img: /path/to/nas/data/raw/light/shift_03/color/20261009_200643_451811.jpg
+    sensor_shift: [0.4, -0.2]   # 右に 40 cm・手前に 20 cm
+  - data: shift_04      # 20:46:12-20:50:12
+    start_img: /path/to/nas/data/raw/light/shift_04/color/20261009_204653_468102.jpg
+    sensor_shift: [0.4, -0.4]   # 右に 40 cm・手前に 40 cm
+  - data: normal        # 18:28:43-18:39:50
+    start_img: /path/to/nas/data/raw/light/normal/color/20261009_182910_270622.jpg
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/special.yaml --gpu 0 > ./log/log_special.out 2>&1 &

@@ -1,0 +1,74 @@
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 2
+  detect: False
+jobs:
+  # 複数人（people >= 2）では persons で人物ごとに track_id 一覧と開始フェーズを指定する。
+  # ids には、その人物に対応する（不安定な）track_id をすべて列挙する。
+  # start_phase は t=0 でその人物が居るフェーズ（0〜4）。
+  #   phase 0,1 -> walk / 2 -> stop / 3 -> crouch / 4 -> hand
+  # ids の値は各データの bbox_label.csv の person_id 列を確認して埋めること。
+  # track_id が途中で別人に乗り移った場合は、その id を区間で分ける:
+  #   ids: [1, {id: 9, to: 20260129_083945_703176.jpg},]   # 9 はこの時刻まで
+  #   ids: [2, {id: 9, from: 20260129_083945_703176.jpg},] # 以降は別の人物
+  #   from は含み to は含まない。同じ時刻を to と from に書けば穴も重なりも出ない。
+  #   同じ id に from だけ / to だけを並べると、書いた順に区間を開いて閉じると読む:
+  #     ids: [{id: 29, from: A}, {id: 29, to: B}]   -> A から B まで の 1 区間
+  #     ids: [{id: 29, to: A}, {id: 29, from: B}]   -> A まで と B から の 2 区間
+  # 収録中にサイクルを飛ばして以降の位相がずれた場合は shifts で補正する（delta 省略で 1）:
+  #   persons の中に書けばその人物だけ、job 直下に書けば全行（1人データはこちら）に効く。
+  #     shifts: [{from: 20260129_084644_593751.jpg, delta: 1}]
+  - data: twoperson_department_01
+    phase_sec: 5.09
+    start_img: /path/to/nas/data/raw/light/twoperson_department_01/color/20260930_142952_911161.jpg
+    persons:
+      - ids: [1,]
+        start_phase: 2 #渋谷
+      - ids: [2,4,7,]
+        start_phase: 3 #Li
+  - data: twoperson_department_02
+    phase_sec: 5.12
+    start_img: /path/to/nas/data/raw/light/twoperson_department_02/color/20260930_151046_764642.jpg
+    persons:
+      - ids: [1,]
+        start_phase: 2 #shibuya
+      - ids: [2,3,7,]
+        start_phase: 3 #moriwaki
+  - data: twoperson_department_03
+    phase_sec: 5.10
+    start_img: /path/to/nas/data/raw/light/twoperson_department_03/color/20260930_160443_357852.jpg
+    persons:
+      - ids: [2,3,]
+        start_phase: 2 #sekiyama
+        shifts: [{from: 20260930_160853_752928.jpg, delta: -1}]
+      - ids: [1,]
+        start_phase: 3 #yoshizaki
+        shifts: [{from: 20260930_160853_752928.jpg, delta: -1}]
+  - data: twoperson_department_04
+    phase_sec: 5.0
+    start_img: /path/to/nas/data/raw/light/twoperson_department_04/color/20260930_162932_513294.jpg
+    persons:
+      - ids: [2,]
+        start_phase: 2 #yoshizaki
+      - ids: [1,]
+        start_phase: 3 #ueno
+  - data: twoperson_department_05
+    phase_sec: 5.11
+    start_img: /path/to/nas/data/raw/light/twoperson_department_05/color/20260930_164442_230932.jpg
+    persons:
+      - ids: [2,]
+        start_phase: 2 #yoshizaki
+      - ids: [1,]
+        start_phase: 3 #tsunoda
+  - data: twoperson_department_06
+    phase_sec: 5.12
+    start_img: /path/to/nas/data/raw/light/twoperson_department_06/color/20260930_172138_423166.jpg
+    persons:
+      - ids: [2,]
+        start_phase: 2 #yoshizaki
+      - ids: [1,5,9]
+        start_phase: 3 #ishizaki
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/twoperson_department.yaml --gpu 0 > ./log/log_twoperson_department.out 2>&1 &

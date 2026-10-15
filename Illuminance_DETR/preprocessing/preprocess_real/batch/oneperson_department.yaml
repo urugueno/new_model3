@@ -1,0 +1,27 @@
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 1
+  detect: False
+jobs:
+  - data: oneperson_department_01
+    phase_sec: 5.12
+    start_img: /path/to/nas/data/raw/light/oneperson_department_01/color/20260930_142008_746717.jpg
+  - data: oneperson_department_02
+    phase_sec: 5.14
+    start_img: /path/to/nas/data/raw/light/oneperson_department_02/color/20260930_151838_376969.jpg
+  - data: oneperson_department_03
+    phase_sec: 5.12
+    start_img: /path/to/nas/data/raw/light/oneperson_department_03/color/20260930_153146_888117.jpg
+  - data: oneperson_department_04
+    phase_sec: 5.11
+    start_img: /path/to/nas/data/raw/light/oneperson_department_04/color/20260930_154904_897005.jpg
+  - data: oneperson_department_05
+    phase_sec: 5.12
+    start_img: /path/to/nas/data/raw/light/oneperson_department_05/color/20260930_155553_348988.jpg
+  - data: oneperson_department_06
+    phase_sec: 5.10
+    start_img: /path/to/nas/data/raw/light/oneperson_department_06/color/20260930_173319_293027.jpg
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/oneperson_department.yaml --gpu 0 > ./log/log_oneperson_department.out 2>&1 &

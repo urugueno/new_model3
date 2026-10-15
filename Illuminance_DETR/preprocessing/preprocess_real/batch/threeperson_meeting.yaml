@@ -1,0 +1,96 @@
+# threeperson_meeting_02 threeperson_meeting_03  threeperson_meeting_04 threeperson_meeting_05 threeperson_meeting_08 threeperson_meeting_09 threeperson_meeting_10
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 3
+  detect: False
+jobs:
+  # 複数人（people >= 2）では persons で人物ごとに track_id 一覧と開始フェーズを指定する。
+  # ids には、その人物に対応する（不安定な）track_id をすべて列挙する。
+  # start_phase は t=0 でその人物が居るフェーズ（0〜5、cycle_phases=6 のため）。
+  #   phase 0,1 -> walk / 2 -> stop / 3 -> crouch / 4 -> hand / 5 -> bow（除外）
+  # ids の値は各データの bbox_label.csv の person_id 列を確認して埋めること。
+  # track_id が途中で別人に乗り移った場合は、その id を区間で分ける:
+  #   ids: [1, {id: 9, to: 20260129_083945_703176.jpg},]   # 9 はこの時刻まで
+  #   ids: [2, {id: 9, from: 20260129_083945_703176.jpg},] # 以降は別の人物
+  #   from は含み to は含まない。同じ時刻を to と from に書けば穴も重なりも出ない。
+  #   同じ id に from だけ / to だけを並べると、書いた順に区間を開いて閉じると読む:
+  #     ids: [{id: 29, from: A}, {id: 29, to: B}]   -> A から B まで の 1 区間
+  #     ids: [{id: 29, to: A}, {id: 29, from: B}]   -> A まで と B から の 2 区間
+  # 収録中にサイクルを飛ばして以降の位相がずれた場合は shifts で補正する（delta 省略で 1）:
+  #   persons の中に書けばその人物だけ、job 直下に書けば全行（1人データはこちら）に効く。
+  #     shifts: [{from: 20260129_084644_593751.jpg, delta: 1}]
+  - data: threeperson_meeting_02
+    start_img: /path/to/nas/data/raw/light/threeperson_meeting_02/color/20260123_115604_091210.jpg
+    cycle_phases: 6
+    drop_phases: [5]
+    persons:
+      - ids: [3,19,29,33,]
+        start_phase: 2 #shibuya
+      - ids: [2,34,]
+        start_phase: 3 #Li
+      - ids: [1,4,7,12,15,]
+        start_phase: 4 #moriwaki
+  - data: threeperson_meeting_03
+    start_img: /path/to/nas/data/raw/light/threeperson_meeting_03/color/20260123_120829_279928.jpg
+    cycle_phases: 6
+    drop_phases: [5]
+    persons:
+      - ids: [1,17,25,]
+        start_phase: 1 #shibuya
+      - ids: [3,20,22,34,36,]
+        start_phase: 2 #Li
+      - ids: [2,10,14,18,23,28,]
+        start_phase: 3 #moriwaki
+  - data: threeperson_meeting_04
+    start_img: /path/to/nas/data/raw/light/threeperson_meeting_04/color/20260123_130214_154976.jpg
+    cycle_phases: 6
+    drop_phases: [5]
+    persons:
+      - ids: [1,15,32,34,37,50,]
+        start_phase: 1 #kuwana
+      - ids: [3,28,36,43,51,]
+        start_phase: 2 #Li
+      - ids: [2,6,14,23,]
+        start_phase: 3 #hahriguchi
+  - data: threeperson_meeting_05
+    start_img: /path/to/nas/data/raw/light/threeperson_meeting_05/color/20260123_131339_225436.jpg
+    cycle_phases: 6
+    drop_phases: [5]
+    persons:
+      - ids: [3,49,]
+        start_phase: 1 #kuwana
+      - ids: [1,32,]
+        start_phase: 2 #Li
+      - ids: [2,36,39,]
+        start_phase: 3 #hariguchi
+  - data: threeperson_meeting_08
+    start_img: /path/to/nas/data/raw/light/threeperson_meeting_08/color/20260129_121859_478303.jpg
+    persons:
+      - ids: [4,28,]
+        start_phase: 1 #kojima
+      - ids: [1,13,19,41,]
+        start_phase: 2 #tsunoda
+      - ids: [3,7,16,26,30,]
+        start_phase: 3 #hariguchi
+  - data: threeperson_meeting_09
+    start_img: /path/to/nas/data/raw/light/threeperson_meeting_09/color/20260129_123019_400979.jpg
+    persons:
+      - ids: [1,]
+        start_phase: 1 #kojima
+      - ids: [3,20,]
+        start_phase: 2 #tsunoda
+      - ids: [2,12,13,14,26,29,]
+        start_phase: 3 #hariguchi
+  - data: threeperson_meeting_10
+    start_img: /path/to/nas/data/raw/light/threeperson_meeting_10/color/20260129_124144_563307.jpg
+    persons:
+      - ids: [1,]
+        start_phase: 2 #kojima
+      - ids: [3,18,]
+        start_phase: 3 #tsunoda
+      - ids: [2,7,23,]
+        start_phase: 4 #hariguchi
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/threeperson_meeting.yaml --gpu 0 > ./log/log_threeperson_meeting.out 2>&1 &

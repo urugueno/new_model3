@@ -1,0 +1,84 @@
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 3
+  detect: False
+jobs:
+  # 複数人（people >= 2）では persons で人物ごとに track_id 一覧と開始フェーズを指定する。
+  # ids には、その人物に対応する（不安定な）track_id をすべて列挙する。
+  # start_phase は t=0 でその人物が居るフェーズ（0〜4）。
+  #   phase 0,1 -> walk / 2 -> stop / 3 -> crouch / 4 -> hand
+  # ids の値は各データの bbox_label.csv の person_id 列を確認して埋めること。
+  # track_id が途中で別人に乗り移った場合は、その id を区間で分ける:
+  #   ids: [1, {id: 9, to: 20260129_083945_703176.jpg},]   # 9 はこの時刻まで
+  #   ids: [2, {id: 9, from: 20260129_083945_703176.jpg},] # 以降は別の人物
+  #   from は含み to は含まない。同じ時刻を to と from に書けば穴も重なりも出ない。
+  #   同じ id に from だけ / to だけを並べると、書いた順に区間を開いて閉じると読む:
+  #     ids: [{id: 29, from: A}, {id: 29, to: B}]   -> A から B まで の 1 区間
+  #     ids: [{id: 29, to: A}, {id: 29, from: B}]   -> A まで と B から の 2 区間
+  # 収録中にサイクルを飛ばして以降の位相がずれた場合は shifts で補正する（delta 省略で 1）:
+  #   persons の中に書けばその人物だけ、job 直下に書けば全行（1人データはこちら）に効く。
+  #     shifts: [{from: 20260129_084644_593751.jpg, delta: 1}]
+  - data: threeperson_department_01
+    phase_sec: 5.09
+    start_img: /path/to/nas/data/raw/light/threeperson_department_01/color/20260930_143919_967318.jpg
+    persons:
+      - ids: [3,21,33,]
+        start_phase: 1 #渋谷
+      - ids: [1,16,25,28,35,43,]
+        start_phase: 2 #森脇
+      - ids: [2,13,18,38,39,41,]
+        start_phase: 3 #Li
+  - data: threeperson_department_02
+    phase_sec: 5.115
+    start_img: /path/to/nas/data/raw/light/threeperson_department_02/color/20260930_144906_241658.jpg
+    persons:
+      - ids: [2,]
+        start_phase: 1 #渋谷
+      - ids: [3,9,18,25,29,]
+        start_phase: 2 #森脇
+      - ids: [1,6,20,]
+        start_phase: 3 #Li
+  - data: threeperson_department_03
+    phase_sec: 5.105
+    start_img: /path/to/nas/data/raw/light/threeperson_department_03/color/20260930_150251_394499.jpg
+    persons:
+      - ids: [2,11,15,26,33,45,]
+        start_phase: 1 #渋谷
+      - ids: [3,4,6,19,27,39,48,]
+        start_phase: 2 #森脇
+      - ids: [1,12,31,36,38,]
+        start_phase: 3 #石崎
+  - data: threeperson_department_04
+    phase_sec: 5.14
+    start_img: /path/to/nas/data/raw/light/threeperson_department_04/color/20260930_165606_038902.jpg
+    persons:
+      - ids: [3,5,21,31,]
+        start_phase: 1 #石崎
+      - ids: [1,34,38,]
+        start_phase: 2 #吉崎
+      - ids: [2,12,16,24,]
+        start_phase: 3 #関山
+  - data: threeperson_department_05
+    phase_sec: 5.095
+    start_img: /path/to/nas/data/raw/light/threeperson_department_05/color/20260930_170412_858860.jpg
+    persons:
+      - ids: [1,8,19,33,40,42,]
+        start_phase: 1 #石崎
+      - ids: [3,4,31,]
+        start_phase: 2 #上野
+      - ids: [2,11,23,39,]
+        start_phase: 3 #関山
+  - data: threeperson_department_06
+    phase_sec: 5.08
+    start_img: /path/to/nas/data/raw/light/threeperson_department_06/color/20260930_171308_711985.jpg
+    persons:
+      - ids: [3,]
+        start_phase: 1 #石崎
+      - ids: [1,5,8,24,36,]
+        start_phase: 2 #上野
+      - ids: [2,13,27,35,]
+        start_phase: 3 #角田
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/threeperson_department.yaml --gpu 0 > ./log/log_threeperson_department.out 2>&1 &

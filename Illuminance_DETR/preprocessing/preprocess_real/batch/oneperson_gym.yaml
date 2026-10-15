@@ -1,0 +1,24 @@
+defaults:
+  tracker: sam3
+  area_size: 1.8
+  bbox_size: 0.6
+  people: 1
+  detect: False
+jobs:
+  - data: oneperson_gym_01
+    start_img: /path/to/nas/data/raw/light/oneperson_gym_01/color/20260129_075114_524602.jpg
+  - data: oneperson_gym_02
+    start_img: /path/to/nas/data/raw/light/oneperson_gym_02/color/20260129_075639_619050.jpg
+  - data: oneperson_gym_03
+    start_img: /path/to/nas/data/raw/light/oneperson_gym_03/color/20260129_080144_310722.jpg
+    shifts:
+    - from: 20260129_080434_327242.jpg
+      delta: -1
+  - data: oneperson_gym_04
+    start_img: /path/to/nas/data/raw/light/oneperson_gym_04/color/20260129_092329_213177.jpg
+  - data: oneperson_gym_05
+    start_img: /path/to/nas/data/raw/light/oneperson_gym_05/color/20260129_092919_534827.jpg
+  - data: oneperson_gym_06
+    start_img: /path/to/nas/data/raw/light/oneperson_gym_06/color/20260129_093644_428960.jpg
+
+# nohup python Illuminance_DETR/preprocessing/preprocess_real/main_batch.py Illuminance_DETR/preprocessing/preprocess_real/batch/oneperson_gym.yaml --gpu 0 > ./log/log_oneperson_gym.out 2>&1 &
