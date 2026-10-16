@@ -1,0 +1,133 @@
+{
+  "_fill_in": "/nas/data_2/ueno1212/light/data/sim_DR_ver2_processed を走査して family/count/dir/n_trials(trialサブフォルダ数)を自動反映。family/count は sim_DR_ver2 側の pattern_meta.json から、n_trials は processed 側のトライアル数から取得(DR/dr2_comp/pattern_metadata_ver2.json と全パターンで一致を確認済み)。",
+  "patterns": [
+    {
+      "pattern_id": 0,
+      "name": "DR_000",
+      "family": "grid",
+      "count": 5,
+      "dir": "sim_DR_ver2_processed/DR_000",
+      "n_trials": 4
+    },
+    {
+      "pattern_id": 1,
+      "name": "DR_001",
+      "family": "ring",
+      "count": 8,
+      "dir": "sim_DR_ver2_processed/DR_001",
+      "n_trials": 8
+    },
+    {
+      "pattern_id": 2,
+      "name": "DR_002",
+      "family": "grid",
+      "count": 12,
+      "dir": "sim_DR_ver2_processed/DR_002",
+      "n_trials": 4
+    },
+    {
+      "pattern_id": 3,
+      "name": "DR_003",
+      "family": "grid",
+      "count": 9,
+      "dir": "sim_DR_ver2_processed/DR_003",
+      "n_trials": 2
+    },
+    {
+      "pattern_id": 4,
+      "name": "DR_004",
+      "family": "grid",
+      "count": 10,
+      "dir": "sim_DR_ver2_processed/DR_004",
+      "n_trials": 2
+    },
+    {
+      "pattern_id": 5,
+      "name": "DR_005",
+      "family": "grid",
+      "count": 21,
+      "dir": "sim_DR_ver2_processed/DR_005",
+      "n_trials": 4
+    },
+    {
+      "pattern_id": 6,
+      "name": "DR_006",
+      "family": "grid",
+      "count": 24,
+      "dir": "sim_DR_ver2_processed/DR_006",
+      "n_trials": 4
+    },
+    {
+      "pattern_id": 7,
+      "name": "DR_007",
+      "family": "grid",
+      "count": 30,
+      "dir": "sim_DR_ver2_processed/DR_007",
+      "n_trials": 8
+    },
+    {
+      "pattern_id": 8,
+      "name": "DR_008",
+      "family": "grid",
+      "count": 32,
+      "dir": "sim_DR_ver2_processed/DR_008",
+      "n_trials": 2
+    },
+    {
+      "pattern_id": 9,
+      "name": "DR_009",
+      "family": "grid",
+      "count": 35,
+      "dir": "sim_DR_ver2_processed/DR_009",
+      "n_trials": 2
+    },
+    {
+      "pattern_id": 10,
+      "name": "DR_010",
+      "family": "grid",
+      "count": 36,
+      "dir": "sim_DR_ver2_processed/DR_010",
+      "n_trials": 4
+    },
+    {
+      "pattern_id": 11,
+      "name": "DR_011",
+      "family": "grid",
+      "count": 42,
+      "dir": "sim_DR_ver2_processed/DR_011",
+      "n_trials": 4
+    },
+    {
+      "pattern_id": 12,
+      "name": "DR_012",
+      "family": "grid",
+      "count": 48,
+      "dir": "sim_DR_ver2_processed/DR_012",
+      "n_trials": 8
+    },
+    {
+      "pattern_id": 13,
+      "name": "DR_013",
+      "family": "grid",
+      "count": 56,
+      "dir": "sim_DR_ver2_processed/DR_013",
+      "n_trials": 8
+    },
+    {
+      "pattern_id": 14,
+      "name": "DR_014",
+      "family": "grid",
+      "count": 49,
+      "dir": "sim_DR_ver2_processed/DR_014",
+      "n_trials": 4
+    },
+    {
+      "pattern_id": 15,
+      "name": "DR_015",
+      "family": "grid",
+      "count": 64,
+      "dir": "sim_DR_ver2_processed/DR_015",
+      "n_trials": 2
+    }
+  ]
+}
