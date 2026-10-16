@@ -1,4 +1,5 @@
 __pycache__/
+Illuminance_DETR/.dataset_cache/
 *.pyc
 *.pyo
 *.pt

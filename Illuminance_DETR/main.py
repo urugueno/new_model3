@@ -487,7 +487,10 @@ def load_splits(args):
 
     return folds
 
-def run(args):
+def run(args, shared=None):
+    """shared: 前回の run() 呼び出しが返した共有コンテキスト（n_runs 内の再利用用）。
+    None なら従来どおり毎回ゼロから構築する。詳細は main() 側のコメント参照。
+    """
     seed = args.seed
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -556,76 +559,89 @@ def run(args):
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # 照度センサ列ごとの mean/std。RGB では意味を持たない（画像は ImageNet 統計で
-    # 正規化する）ので else 側に落として mean/std/test_mean/test_std を None にする。
-    if args.standardize and args.modality == 'none':
-        train_paths = args.train_illuminance_path
-        df_list = []
-        for p in train_paths:
-            df = pd.read_csv(p)
-            
-            if args.do_split:
-                num_train = int(len(df) * args.train_ratio)
-                df = df.iloc[:num_train]
-            
-            df_list.append(df)
-        
-        full_train_df = pd.concat(df_list, ignore_index=True)
-        sensor_columns = [col for col in full_train_df.columns if col != 'timestamp']
-        sensor_df = full_train_df[sensor_columns]
-        
-        if args.standardize_threshold > 0:
-            sensor_df = sensor_df[sensor_df >= args.standardize_threshold]
-        
-        mean_vals = sensor_df.mean()
-        std_vals = sensor_df.std()
-        
-        args.mean = torch.tensor(mean_vals.values, dtype=torch.float32)
-        args.std = torch.tensor(std_vals.values, dtype=torch.float32)
-
-        if args.adapt == 'input' and not args.do_split:
-            args.test_mean = []
-            args.test_std = []
-            for p in args.test_illuminance_path:
+    # 照度センサ列ごとの mean/std、センサ選択(selected_columns)は seed に依存しない
+    # （乱数を使うのは「--num_sensors で全列未満に間引く」場合のみで、このとき
+    # --random_sensors の有無にかかわらず args.seed で再シードされた random モジュールを
+    # 消費するため、そのケースだけは run ごとに変わり得る）。shared が渡されていれば
+    # (= 1 回目の run() がこの下のブロックを実行し、間引きが無いと確認できた場合)、
+    # ここは再計算せず前回の結果を使い回す。
+    if shared is None:
+        # 照度センサ列ごとの mean/std。RGB では意味を持たない（画像は ImageNet 統計で
+        # 正規化する）ので else 側に落として mean/std/test_mean/test_std を None にする。
+        if args.standardize and args.modality == 'none':
+            train_paths = args.train_illuminance_path
+            df_list = []
+            for p in train_paths:
                 df = pd.read_csv(p)
-                num_adapt = int(len(df) * args.adapt_ratio)
-                session_df = df.iloc[:num_adapt][sensor_columns]
 
-                if args.standardize_threshold > 0:
-                    session_df = session_df[session_df >= args.standardize_threshold]
+                if args.do_split:
+                    num_train = int(len(df) * args.train_ratio)
+                    df = df.iloc[:num_train]
 
-                args.test_mean.append(torch.tensor(session_df.mean().values, dtype=torch.float32))
-                args.test_std.append(torch.tensor(session_df.std().values, dtype=torch.float32))
+                df_list.append(df)
+
+            full_train_df = pd.concat(df_list, ignore_index=True)
+            sensor_columns = [col for col in full_train_df.columns if col != 'timestamp']
+            sensor_df = full_train_df[sensor_columns]
+
+            if args.standardize_threshold > 0:
+                sensor_df = sensor_df[sensor_df >= args.standardize_threshold]
+
+            mean_vals = sensor_df.mean()
+            std_vals = sensor_df.std()
+
+            args.mean = torch.tensor(mean_vals.values, dtype=torch.float32)
+            args.std = torch.tensor(std_vals.values, dtype=torch.float32)
+
+            if args.adapt == 'input' and not args.do_split:
+                args.test_mean = []
+                args.test_std = []
+                for p in args.test_illuminance_path:
+                    df = pd.read_csv(p)
+                    num_adapt = int(len(df) * args.adapt_ratio)
+                    session_df = df.iloc[:num_adapt][sensor_columns]
+
+                    if args.standardize_threshold > 0:
+                        session_df = session_df[session_df >= args.standardize_threshold]
+
+                    args.test_mean.append(torch.tensor(session_df.mean().values, dtype=torch.float32))
+                    args.test_std.append(torch.tensor(session_df.std().values, dtype=torch.float32))
+            else:
+                if args.adapt == 'input' and args.do_split:
+                    print("Note: --adapt input is disabled in --data (do_split=True) mode; using train statistics for test as usual.")
+                args.test_mean = None
+                args.test_std = None
+
         else:
-            if args.adapt == 'input' and args.do_split:
-                print("Note: --adapt input is disabled in --data (do_split=True) mode; using train statistics for test as usual.")
+            args.mean = None
+            args.std = None
             args.test_mean = None
             args.test_std = None
 
-    else:
-        args.mean = None
-        args.std = None
-        args.test_mean = None
-        args.test_std = None
+        # RGB ではセンサ列が存在しない。空にしておけば actual_num_sensors = 0、
+        # selected_columns = [] となり、以降の照度専用処理がすべて無害化される。
+        all_sensor_columns = ([] if args.modality != 'none'
+                              else pd.read_csv(args.train_illuminance_path[0], nrows=0).columns.tolist()[1:])
 
-    # RGB ではセンサ列が存在しない。空にしておけば actual_num_sensors = 0、
-    # selected_columns = [] となり、以降の照度専用処理がすべて無害化される。
-    all_sensor_columns = ([] if args.modality != 'none'
-                          else pd.read_csv(args.train_illuminance_path[0], nrows=0).columns.tolist()[1:])
-    
-    if 0 < args.num_sensors < len(all_sensor_columns):
-        args.actual_num_sensors = args.num_sensors
-    else:
-        args.actual_num_sensors = len(all_sensor_columns)
-
-    if not args.random_sensors:
-        print(f"Running in Identical Sensor Mode: {args.actual_num_sensors} / {len(all_sensor_columns)}")
-        if args.actual_num_sensors < len(all_sensor_columns):
-            args.selected_columns = random.sample(all_sensor_columns, args.actual_num_sensors)
+        if 0 < args.num_sensors < len(all_sensor_columns):
+            args.actual_num_sensors = args.num_sensors
         else:
-            args.selected_columns = all_sensor_columns
+            args.actual_num_sensors = len(all_sensor_columns)
+
+        if not args.random_sensors:
+            print(f"Running in Identical Sensor Mode: {args.actual_num_sensors} / {len(all_sensor_columns)}")
+            if args.actual_num_sensors < len(all_sensor_columns):
+                args.selected_columns = random.sample(all_sensor_columns, args.actual_num_sensors)
+            else:
+                args.selected_columns = all_sensor_columns
+        else:
+            print(f"Running in Layout-Agnostic Sensor Mode: {args.actual_num_sensors} / {len(all_sensor_columns)}")
     else:
-        print(f"Running in Layout-Agnostic Sensor Mode: {args.actual_num_sensors} / {len(all_sensor_columns)}")
+        all_sensor_columns = shared['all_sensor_columns']
+        args.mean, args.std = shared['mean'], shared['std']
+        args.test_mean, args.test_std = shared['test_mean'], shared['test_std']
+        args.actual_num_sensors = shared['actual_num_sensors']
+        args.selected_columns = shared['selected_columns']
 
     device = torch.device(args.device)
     if args.modality != 'none':
@@ -688,21 +704,46 @@ def run(args):
     if args.modality != 'none':
         from modality import build_dataset as _build_ds
 
-    dataset_train = _build_ds(image_set='train', args=args)
-    dataset_val = _build_ds(image_set='val', args=args)
-
-    if args.test_mean is not None:
-        saved_mean, saved_std = args.mean, args.std
-        args.mean, args.std = args.test_mean, args.test_std
-        dataset_test = _build_ds(image_set='test', args=args)
-        args.mean, args.std = saved_mean, saved_std
-    elif args.adapt == 'batch':
-        saved_mean, saved_std = args.mean, args.std
-        args.mean, args.std = None, None
-        dataset_test = _build_ds(image_set='test', args=args)
-        args.mean, args.std = saved_mean, saved_std
+    if shared is not None:
+        dataset_train = shared['dataset_train']
+        dataset_val = shared['dataset_val']
+        dataset_test = shared['dataset_test']
     else:
-        dataset_test = _build_ds(image_set='test', args=args)
+        dataset_train = _build_ds(image_set='train', args=args)
+        dataset_val = _build_ds(image_set='val', args=args)
+
+        if args.test_mean is not None:
+            saved_mean, saved_std = args.mean, args.std
+            args.mean, args.std = args.test_mean, args.test_std
+            dataset_test = _build_ds(image_set='test', args=args)
+            args.mean, args.std = saved_mean, saved_std
+        elif args.adapt == 'batch':
+            saved_mean, saved_std = args.mean, args.std
+            args.mean, args.std = None, None
+            dataset_test = _build_ds(image_set='test', args=args)
+            args.mean, args.std = saved_mean, saved_std
+        else:
+            dataset_test = _build_ds(image_set='test', args=args)
+
+    # n_runs 内で dataset(train/val/test) を使い回せるかどうかの判定。モダリティ切替・
+    # --split_file（fold）・センサのランダム間引き（--random_sensors、または
+    # --num_sensors が全列未満で main.py 側が random.sample する場合）はいずれも
+    # run ごとに結果が変わり得る／キャッシュ設計が及んでいないため対象外とし、
+    # 従来どおり毎 run 作り直す（挙動は一切変えない、安全側に倒す）。
+    if shared is not None:
+        shared_out = shared
+    elif (args.modality == 'none' and args.split_file is None and not args.random_sensors
+          and args.actual_num_sensors >= len(all_sensor_columns)):
+        shared_out = {
+            'all_sensor_columns': all_sensor_columns,
+            'mean': args.mean, 'std': args.std,
+            'test_mean': args.test_mean, 'test_std': args.test_std,
+            'actual_num_sensors': args.actual_num_sensors,
+            'selected_columns': args.selected_columns,
+            'dataset_train': dataset_train, 'dataset_val': dataset_val, 'dataset_test': dataset_test,
+        }
+    else:
+        shared_out = None
 
     sampler_train = torch.utils.data.RandomSampler(dataset_train)
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
@@ -738,7 +779,7 @@ def run(args):
 
     if args.eval:
         _evaluate(model, criterion, postprocessors, data_loader_val, device, output_dir, args=args)
-        return
+        return None, output_dir, shared_out
 
     # -MPJPE（mm）は序盤に -1000 を下回りうるので -inf から始める
     # --task id は (val 正解率, -val 損失) の辞書式比較。正解率が 1.0 で頭打ちしても損失で選べる。
@@ -908,7 +949,7 @@ def run(args):
             f.write("output_path  :" + str(output_dir) + "\n")
             f.write("\n")
         
-    return final_log_stats, output_dir
+    return final_log_stats, output_dir, shared_out
 
 def main(args):
     if args.split_file and (args.data or args.train):
@@ -1019,13 +1060,16 @@ def main(args):
             args.train, args.val, args.test = fold['train'], fold['val'], fold['test']
             args.fold_name = fold['name']
 
+        # fold が変われば train/val/test のセッションも変わるため、dataset の共有は
+        # fold ごとにリセットする（--split_file 未指定なら fold は常に 1 通りなので無関係）。
+        shared = None
         for i in range(args.n_runs):
             fold_prefix = f"Fold {args.fold_name} / " if args.fold_name else ""
             print(f"{'='*10} {fold_prefix}Run {i+1}/{args.n_runs} {'='*10}")
             args.seed = original_seed + i
             args.t_runs = i+1
 
-            single_run_stats, output_dir = run(args)
+            single_run_stats, output_dir, shared = run(args, shared=shared)
 
             if single_run_stats:
                 all_final_stats.append(single_run_stats)

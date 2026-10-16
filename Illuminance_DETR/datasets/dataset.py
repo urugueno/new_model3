@@ -1,5 +1,10 @@
 import os
 import json
+import hashlib
+import pickle
+import tempfile
+from pathlib import Path
+
 import torch
 import pandas as pd
 from torch.utils.data import Dataset
@@ -10,6 +15,12 @@ from util.calculate import box_xyzxyz_to_cxcywhd
 from util import keypoints
 
 SENSOR_COORDS_FILENAME = "sensor_coords.json"
+
+# val/test の重い前処理(pd.read_csv -> merge_asof -> groupby().iterrows())結果を
+# プロセスをまたいでディスクキャッシュする場所。--train の sim_dirs が違っても
+# --val/--test の実データパスが同一なスクリプト群(例: pose/DR の pose_dr2_k*_r*.sh)で、
+# 初回以降はここから読み込む。
+CACHE_DIR = Path(__file__).resolve().parent.parent / ".dataset_cache"
 
 
 def load_sensor_coords(ill_path, columns, selected_columns):
@@ -46,6 +57,33 @@ def load_sensor_coords(ill_path, columns, selected_columns):
     if torch.any(coords < 0) or torch.any(coords > 1):
         raise ValueError(f"Sensor coordinates are not normalized to [0, 1]: {ill_path}")
     return coords, frame
+
+
+def _resolve_mean_std(mean, std, all_sensor_columns, selected_columns):
+    """train csv から計算した mean/std を selected_columns に絞り込み、std_eps を作る。
+    __init__ とキャッシュ復元(_load_cached_dataset)の両方から呼ぶ共通ロジック。
+    """
+    if mean is not None and std is not None and len(all_sensor_columns) != len(selected_columns):
+        all_columns_map = {col: i for i, col in enumerate(all_sensor_columns)}
+        selected_indices = [all_columns_map[col] for col in selected_columns]
+        if isinstance(mean, list):
+            mean = [m[selected_indices] for m in mean]
+            std = [s[selected_indices] for s in std]
+        else:
+            mean = mean[selected_indices]
+            std = std[selected_indices]
+
+    if std is None:
+        std_eps = None
+    elif isinstance(std, list):
+        std_eps = [s + 1e-6 for s in std]
+    else:
+        std_eps = std + 1e-6
+    return mean, std, std_eps
+
+
+def _as_list(p):
+    return p if isinstance(p, list) else [p]
 
 
 class IlluminanceDetectionDataset(Dataset):
@@ -192,25 +230,8 @@ class IlluminanceDetectionDataset(Dataset):
             else:
                 self.selected_columns = all_sensor_columns
         
-        self.mean = args.mean
-        self.std = args.std
-
-        if self.mean is not None and self.std is not None and len(all_sensor_columns) != len(self.selected_columns):
-            all_columns_map = {col: i for i, col in enumerate(all_sensor_columns)}
-            selected_indices = [all_columns_map[col] for col in self.selected_columns]
-            if isinstance(self.mean, list):
-                self.mean = [m[selected_indices] for m in self.mean]
-                self.std = [s[selected_indices] for s in self.std]
-            else:
-                self.mean = self.mean[selected_indices]
-                self.std = self.std[selected_indices]
-
-        if self.std is None:
-            self.std_eps = None
-        elif isinstance(self.std, list):
-            self.std_eps = [s + 1e-6 for s in self.std]
-        else:
-            self.std_eps = self.std + 1e-6
+        self.mean, self.std, self.std_eps = _resolve_mean_std(
+            args.mean, args.std, all_sensor_columns, self.selected_columns)
 
         if args.environment != 'none':
             self.environment_vectors = []
@@ -368,16 +389,119 @@ class IlluminanceDetectionDataset(Dataset):
 
         return illuminance_tensor, self.sensor_coords_by_file[target['file_idx']], target
 
+# ディスクキャッシュする属性。重い前処理(pd.read_csv -> to_datetime -> merge_asof ->
+# groupby().iterrows())の成果物のみで、mean/std/std_eps は含まない(run・スクリプトごとに
+# 違う値になり得るため、キャッシュ復元後に _resolve_mean_std でその場の args から設定する)。
+_CACHE_FIELDS = ("samples", "selected_columns", "sensor_coords_by_file", "task")
+
+
+def _dataset_cache_key(illuminance_csv_path, bbox_csv_path, environment_csv_path, args, split, do_split):
+    """val/test のように複数スクリプト(プロセス)間で実データパスが同一になるケースで
+    キャッシュをヒットさせるためのキー。--train は sim_dirs がスクリプトごとに違うので
+    自然とキャッシュミスし、通常通り再構築されるだけ(副作用なし)。
+    ソース csv の mtime も含めるので、データが後から更新されれば自動的に無効化される。
+    """
+    ill_paths = _as_list(illuminance_csv_path)
+    bbox_paths = _as_list(bbox_csv_path)
+    env_paths = _as_list(environment_csv_path) if args.environment != 'none' else []
+
+    mtimes = []
+    for p in ill_paths + bbox_paths + env_paths:
+        try:
+            mtimes.append(os.path.getmtime(p))
+        except OSError:
+            mtimes.append(None)
+
+    selected_columns = getattr(args, "selected_columns", None)
+    payload = {
+        "illuminance_csv_path": ill_paths,
+        "bbox_csv_path": bbox_paths,
+        "environment_csv_path": env_paths,
+        "task": args.task,
+        "window_size": args.window_size,
+        "space_size": list(args.space_size),
+        "space_origin": list(args.space_origin),
+        "environment": args.environment,
+        "do_split": do_split,
+        "train_ratio": args.train_ratio if do_split else None,
+        "val_ratio": args.val_ratio if do_split else None,
+        "adapt_ratio": args.adapt_ratio if (split == 'test' and args.adapt == 'input') else None,
+        "split": split,
+        "selected_columns": list(selected_columns) if selected_columns else None,
+        "mtimes": mtimes,
+    }
+    blob = json.dumps(payload, sort_keys=True, default=str).encode()
+    return hashlib.sha256(blob).hexdigest()
+
+
+def _load_cached_dataset(cache_path, args, illuminance_csv_path):
+    if not cache_path.exists():
+        return None
+    try:
+        with open(cache_path, "rb") as f:
+            payload = pickle.load(f)
+    except (OSError, pickle.UnpicklingError, EOFError, AttributeError):
+        return None
+
+    dataset = IlluminanceDetectionDataset.__new__(IlluminanceDetectionDataset)
+    for field in _CACHE_FIELDS:
+        setattr(dataset, field, payload[field])
+
+    # mean/std はキャッシュに含めない(train の sim_dirs が違えばスクリプトごとに違う値に
+    # なるため)。常にその場の args.mean/args.std から _resolve_mean_std で設定し直す。
+    first_ill_path = _as_list(illuminance_csv_path)[0]
+    all_sensor_columns = pd.read_csv(first_ill_path, nrows=0).columns.tolist()[1:]
+    dataset.mean, dataset.std, dataset.std_eps = _resolve_mean_std(
+        args.mean, args.std, all_sensor_columns, dataset.selected_columns)
+    return dataset
+
+
+def _save_cached_dataset(cache_path, dataset):
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {field: getattr(dataset, field) for field in _CACHE_FIELDS}
+    fd, tmp_path = tempfile.mkstemp(dir=CACHE_DIR, prefix=".tmp_")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            pickle.dump(payload, f, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(tmp_path, cache_path)  # atomic rename: 並列実行時も壊れたキャッシュを読まない
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
+
+
 def build(image_set, args):
     illuminance_path = getattr(args, f"{image_set}_illuminance_path")
     bbox_path = getattr(args, f"{image_set}_bbox_path")
     environment_path = getattr(args, f"{image_set}_environment_path")
-    
-    return IlluminanceDetectionDataset(
-        illuminance_csv_path=illuminance_path, 
+
+    # selected_columns が明示されていない(= --random_sensors でセンサをランダム間引き
+    # しており、このメソッド内の random.sample に委ねている)場合はキャッシュしない。
+    # キーに selected_columns が入らず、違う間引き結果を取り違えて返す事故になるため。
+    # --modality は別の Dataset 実装(modality/build_dataset)を使うので対象外。
+    use_cache = (getattr(args, "selected_columns", None)
+                 and getattr(args, "modality", "none") == "none")
+
+    cache_path = None
+    if use_cache:
+        cache_key = _dataset_cache_key(illuminance_path, bbox_path, environment_path,
+                                        args, image_set, args.do_split)
+        cache_path = CACHE_DIR / f"{cache_key}.pkl"
+        cached = _load_cached_dataset(cache_path, args, illuminance_path)
+        if cached is not None:
+            print(f"[{image_set}] dataset cache hit: {cache_path.name}")
+            return cached
+
+    dataset = IlluminanceDetectionDataset(
+        illuminance_csv_path=illuminance_path,
         bbox_csv_path=bbox_path,
         environment_csv_path=environment_path,
         args=args,
         do_split=args.do_split,
         split=image_set
     )
+
+    if use_cache:
+        _save_cached_dataset(cache_path, dataset)
+
+    return dataset
